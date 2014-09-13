@@ -12,6 +12,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import android.annotation.SuppressLint;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
@@ -21,28 +22,58 @@ import android.support.v7.app.ActionBarActivity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.View.OnClickListener;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.SimpleAdapter;
 import android.widget.SimpleAdapter.ViewBinder;
 
+import com.example.entity.Constant;
 import com.example.entity.Music;
+import com.example.service.PlayService;
 
-public class MainActivity extends ActionBarActivity {
+public class MainActivity extends ActionBarActivity implements OnClickListener {
 	// private int MUSICLIST_SUCCESS = 0;
 	// private int MUSICLIST_FAILURE = 1;
 
-	private ListView musicListView;
-	private SimpleAdapter mAdapter;
-	private List<Music> musicList = new ArrayList<Music>();
+	private ListView musicListView;// 音乐列表界面
+	private SimpleAdapter mAdapter;// 列表界面的适配器
+	private List<Music> musicList = new ArrayList<Music>();// 音乐
+
+	private boolean isPlaying = false; // 正在播放
+	private boolean isPause = false; // 暂停
+
+	private Button playBtn;
+	private Button previousBtn;
+	private Button nextBtn;
+
+	private Intent intent = new Intent();
+	private int listPosition = 0; // 标识列表位置
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 		musicListView = (ListView) findViewById(R.id.musicListView);
+		musicListView.setOnItemClickListener(new MusicListItemClickListener());
 		new Thread(runnable).start();
 
+		findViewById();// 找到界面上的控件
+		setViewOnclickListener();// 设置监听器
+
+	}
+
+	private void setViewOnclickListener() {
+		playBtn.setOnClickListener(this);
+	}
+
+	private void findViewById() {
+		playBtn = (Button) findViewById(R.id.play);
+		previousBtn = (Button) findViewById(R.id.previous);
+		nextBtn = (Button) findViewById(R.id.next);
 	}
 
 	@SuppressLint("HandlerLeak")
@@ -101,12 +132,12 @@ public class MainActivity extends ActionBarActivity {
 			public boolean setViewValue(View view, Object data,
 					String textRepresentation) {
 				// TODO Auto-generated method stub
-				if(view instanceof ImageView && data instanceof Bitmap){  
-			        ImageView i = (ImageView)view;  
-			        i.setImageBitmap((Bitmap) data);  
-			        return true;  
-			    }  
-			    return false;  
+				if (view instanceof ImageView && data instanceof Bitmap) {
+					ImageView i = (ImageView) view;
+					i.setImageBitmap((Bitmap) data);
+					return true;
+				}
+				return false;
 			}
 		});
 		musicListView.post(new Runnable() {
@@ -194,4 +225,62 @@ public class MainActivity extends ActionBarActivity {
 		return super.onOptionsItemSelected(item);
 	}
 
+	private class MusicListItemClickListener implements OnItemClickListener {
+
+		@Override
+		public void onItemClick(AdapterView<?> parent, View view, int position,
+				long id) {
+			listPosition = position;
+			playMusic();
+
+		}
+
+	}
+
+	public void playMusic() {
+		if (musicList != null) {
+			Music music = musicList.get(listPosition);
+			intent.putExtra("songLink", music.getSongLink());
+			intent.putExtra("MSG", Constant.PlayerMsg.PLAY_MSG);
+			intent.setClass(MainActivity.this, PlayService.class);
+			startService(intent);
+			playBtn.setBackgroundResource(R.drawable.pause_selector);// 改变图标
+			isPlaying = true;
+			isPause = false;
+		}
+	}
+
+	public void pauseMusic() {
+		intent.putExtra("MSG", Constant.PlayerMsg.PAUSE_MSG);
+		intent.setClass(MainActivity.this, PlayService.class);
+		startService(intent);
+		playBtn.setBackgroundResource(R.drawable.play_selector);// 改变图标
+		isPlaying = false;
+		isPause = true;
+	}
+
+	public void continueMusic() {
+		intent.putExtra("MSG", Constant.PlayerMsg.CONTINUE_MSG);
+		intent.setClass(MainActivity.this, PlayService.class);
+		startService(intent);
+		playBtn.setBackgroundResource(R.drawable.pause_selector);// 改变图标
+		isPlaying = true;
+		isPause = false;
+	}
+
+	@Override
+	public void onClick(View v) {
+		switch (v.getId()) {
+		case R.id.play:
+			if (isPlaying) {
+				pauseMusic();// 暂停音乐
+			} else if (isPause) {
+				continueMusic();
+			} else {
+				playMusic();
+			}
+			break;
+
+		}
+	}
 }
