@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/background"
-    android:gravity="top"
+    
     android:orientation="vertical" >
 
     <ListView
@@ -30,24 +30,7 @@
             android:background="@drawable/play_selector"
             android:gravity="center_vertical" />
 
-        <Button
-            android:id="@+id/next"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignParentTop="true"
-            android:layout_marginLeft="30dp"
-            android:layout_toRightOf="@+id/play"
-            android:background="@drawable/next"
-            android:gravity="right" />
-
-        <Button
-            android:id="@+id/previous"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignParentTop="true"
-            android:layout_marginRight="30dp"
-            android:layout_toLeftOf="@+id/play"
-            android:background="@drawable/previous" />
+      
     </RelativeLayout>
 
     

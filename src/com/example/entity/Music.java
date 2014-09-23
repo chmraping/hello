@@ -1,13 +1,22 @@
 package com.example.entity;
 
-public class Music {
+import java.io.Serializable;
+
+public class Music implements Serializable{
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	private String songId;
 	private String songName;
 	private String artistName;
 	private String songPicBig;
+	private String songPicRadio;
 	private String time;
 	private String songLink;
 	private String showLink;
+	private String lrcLink;
+	private String size;
 	public String getSongId() {
 		return songId;
 	}
@@ -50,6 +59,26 @@ public class Music {
 	public void setShowLink(String showLink) {
 		this.showLink = showLink;
 	}
+	public String getLrcLink() {
+		return lrcLink;
+	}
+	public void setLrcLink(String lrcLink) {
+		this.lrcLink = lrcLink;
+	}
+	public void setSongPicRadio(String songPicRadio) {
+		this.songPicRadio = songPicRadio;
+		
+	}
+	public String getSongPicRadio() {
+		return songPicRadio;
+	}
+	public String getSize() {
+		return size;
+	}
+	public void setSize(String size) {
+		this.size = size;
+	}
 
+	
 	
 }
