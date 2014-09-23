@@ -1,8 +1,7 @@
-package com.example.activity;
+package com.example.hello;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
-import java.io.Serializable;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
@@ -13,16 +12,13 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import android.annotation.SuppressLint;
-import android.app.Activity;
-import android.app.AlertDialog;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.view.KeyEvent;
+import android.support.v7.app.ActionBarActivity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -32,60 +28,37 @@ import android.widget.AdapterView.OnItemClickListener;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ListView;
-import android.widget.RelativeLayout;
 import android.widget.SimpleAdapter;
 import android.widget.SimpleAdapter.ViewBinder;
 
 import com.example.entity.Constant;
 import com.example.entity.Music;
-import com.example.hello.R;
 import com.example.service.PlayService;
 
-public class MainActivity extends Activity implements OnClickListener {
-	private RelativeLayout play_layout;
+public class MainActivity extends ActionBarActivity implements OnClickListener {
+	// private int MUSICLIST_SUCCESS = 0;
+	// private int MUSICLIST_FAILURE = 1;
+
 	private ListView musicListView;// 音乐列表界面
 	private SimpleAdapter mAdapter;// 列表界面的适配器
-	private List<Music> musicList = new ArrayList<Music>();// 音乐列表
+	private List<Music> musicList = new ArrayList<Music>();// 音乐
 
 	private boolean isPlaying = false; // 正在播放
 	private boolean isPause = false; // 暂停
 
 	private Button playBtn;
-	// private Button previousBtn;
-	// private Button nextBtn;
+	private Button previousBtn;
+	private Button nextBtn;
 
 	private Intent intent = new Intent();
 	private int listPosition = 0; // 标识列表位置
-	
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 		musicListView = (ListView) findViewById(R.id.musicListView);
 		musicListView.setOnItemClickListener(new MusicListItemClickListener());
-		play_layout = (RelativeLayout) findViewById(R.id.play_layout);
-		play_layout.setOnClickListener(new OnClickListener() {
-			
-			@Override
-			public void onClick(View v) {
-				Intent intent = new Intent(MainActivity.this,
-						PlayActivity.class);
-				Bundle bundle = new Bundle();
-				bundle.putSerializable("musicList", (Serializable) musicList);
-				bundle.putInt("listPosition", listPosition);
-				bundle.putBoolean("isPlaying", isPlaying);
-				bundle.putBoolean("isPause", isPause);
-				intent.putExtras(bundle);
-//				Music music = musicList.get(listPosition);
-//				intent.putExtra("listPosition", listPosition);
-//				intent.putExtra("songLink", music.getSongLink());
-//				intent.putExtra("songPicRadio", music.getSongPicRadio());
-//				intent.putExtra("songName", music.getSongName());
-//				intent.putExtra("artistName", music.getArtistName());
-				startActivity(intent);
-
-			}
-		});
 		new Thread(runnable).start();
 
 		findViewById();// 找到界面上的控件
@@ -99,12 +72,34 @@ public class MainActivity extends Activity implements OnClickListener {
 
 	private void findViewById() {
 		playBtn = (Button) findViewById(R.id.play);
+		previousBtn = (Button) findViewById(R.id.previous);
+		nextBtn = (Button) findViewById(R.id.next);
 	}
 
+	@SuppressLint("HandlerLeak")
+	Handler handler = new Handler() {
+		@Override
+		public void handleMessage(Message msg) {
+			// TODO
+			// UI界面的更新等相关操作
+			// super.handleMessage(msg);
+			// Bundle data = msg.getData();
+			// String val = data.getString("value");
+			// Log.i("mylog", "请求结果-->" + val);
+
+		}
+	};
 
 	Runnable runnable = new Runnable() {
 		@Override
 		public void run() {
+			// TODO
+			// 在这里进行 http request.网络请求相关操作
+			// Message msg = new Message();
+			// Bundle data = new Bundle();
+			// data.putString("value", "请求结果");
+			// msg.setData(data);
+			// handler.sendMessage(msg);
 			try {
 				getMusicList();
 				setListAdpter(musicList);
@@ -120,10 +115,10 @@ public class MainActivity extends Activity implements OnClickListener {
 			HashMap<String, Object> map = new HashMap<String, Object>();
 			map.put("songName", music.getSongName());
 			map.put("artistName", music.getArtistName());
+			map.put("songPicBig", music.getSongPicBig());
 			map.put("songPicBig", getPicBig(music.getSongPicBig()));
 			map.put("songLink", music.getSongLink());
 			map.put("time", music.getTime());
-			map.put("lrcLink", music.getLrcLink());
 			mp3List.add(map);
 		}
 
@@ -136,6 +131,7 @@ public class MainActivity extends Activity implements OnClickListener {
 			@Override
 			public boolean setViewValue(View view, Object data,
 					String textRepresentation) {
+				// TODO Auto-generated method stub
 				if (view instanceof ImageView && data instanceof Bitmap) {
 					ImageView i = (ImageView) view;
 					i.setImageBitmap((Bitmap) data);
@@ -156,45 +152,7 @@ public class MainActivity extends Activity implements OnClickListener {
 
 	public void getMusicList() throws Exception {
 		// 百度音乐搜索地址
-		String channelPath = "http://fm.baidu.com/dev/api/?tn=playlist&id=public_yuzhong_huayu&special=flash&prepend=&format=json";
-		String musicPath = "http://music.baidu.com/data/music/fmlink?songIds=";
-
-		String channelJson = getJson(channelPath);// 获取该频道返回的musiclist
-		JSONObject channelJsonObject = new JSONObject(channelJson);
-		JSONArray array = (JSONArray) channelJsonObject.get("list");
-		for (int i = 0; i < 10; i++) {
-			JSONObject o = (JSONObject) array.get(i);
-			musicPath = musicPath + o.get("id") + ",";
-		}
-		musicPath = musicPath.substring(0, musicPath.length() - 1);
-		// 处理musiclist
-		String musicJson = getJson(musicPath);
-		JSONObject musicJsonObject = new JSONObject(musicJson);
-		JSONObject data = (JSONObject) musicJsonObject.get("data");
-		array = (JSONArray) data.get("songList");
-		
-		for (int i = 0; i < array.length(); i++) {
-			JSONObject o = (JSONObject) array.get(i);
-			Music music = new Music();
-			music.setArtistName(o.getString("artistName"));
-			music.setShowLink(o.getString("showLink"));
-			music.setSongId(o.getString("songId"));
-			music.setSongLink(o.getString("songLink"));
-			music.setSongName(o.getString("songName"));
-			music.setSongPicBig(o.getString("songPicBig"));
-			music.setSongPicRadio(o.getString("songPicRadio"));
-			music.setSize(o.getString("size"));
-//			 music.setSongPicBig(getPicBig(o.getString("songPicBig")));
-			music.setTime(o.getString("time"));
-			music.setLrcLink(o.getString("lrcLink"));
-			musicList.add(music);
-		}
-
-		// JSONArray jsonArray = new JSONArray(json);
-
-	}
-
-	public String getJson(String path) throws Exception {
+		String path = "http://music.baidu.com/data/music/fmlink?songIds=691762,1541626,269605,732067,1610334,1423666,205686,66590612,231125,256845&type=mp3&rate=128&callback=jsonplink1407315626890&_=1407315626183";
 		URL url = new URL(path);
 		HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 
@@ -210,11 +168,28 @@ public class MainActivity extends Activity implements OnClickListener {
 			bos.write(buffer, 0, len);
 		}
 		String json = bos.toString();
-		// int num = json.indexOf("{");
-		// if (num != 0) {
-		// json = json.substring(num);
-		// }
-		return json;
+		int num = json.indexOf("{");
+		json = json.substring(num);
+		JSONObject jsonObject = new JSONObject(json);
+		JSONObject data = (JSONObject) jsonObject.get("data");
+		JSONArray array = (JSONArray) data.get("songList");
+
+		for (int i = 0; i < array.length(); i++) {
+			JSONObject o = (JSONObject) array.get(i);
+			Music music = new Music();
+			music.setArtistName(o.getString("artistName"));
+			music.setShowLink(o.getString("showLink"));
+			music.setSongId(o.getString("songId"));
+			music.setSongLink(o.getString("songLink"));
+			music.setSongName(o.getString("songName"));
+			music.setSongPicBig(o.getString("songPicBig"));
+			// music.setSongPicBig(getPicBig(o.getString("songPicBig")));
+			music.setTime(o.getString("time"));
+			musicList.add(music);
+		}
+
+		// JSONArray jsonArray = new JSONArray(json);
+
 	}
 
 	private Bitmap getPicBig(String songPicBig) {
@@ -267,13 +242,11 @@ public class MainActivity extends Activity implements OnClickListener {
 			Music music = musicList.get(listPosition);
 			intent.putExtra("songLink", music.getSongLink());
 			intent.putExtra("MSG", Constant.PlayerMsg.PLAY_MSG);
-			intent.putExtra("musicList", (Serializable)musicList);
 			intent.setClass(MainActivity.this, PlayService.class);
 			startService(intent);
 			playBtn.setBackgroundResource(R.drawable.pause_selector);// 改变图标
 			isPlaying = true;
 			isPause = false;
-
 		}
 	}
 
@@ -310,37 +283,4 @@ public class MainActivity extends Activity implements OnClickListener {
 
 		}
 	}
-
-	/**
-	 * 按返回键弹出对话框确定退出
-	 */
-	@Override
-	public boolean onKeyDown(int keyCode, KeyEvent event) {
-		if (keyCode == KeyEvent.KEYCODE_BACK
-				&& event.getAction() == KeyEvent.ACTION_DOWN) {
-
-			new AlertDialog.Builder(this)
-					.setIcon(R.drawable.ic_launcher)
-					.setTitle("退出")
-					.setMessage("您确定要退出？")
-					.setNegativeButton("取消", null)
-					.setPositiveButton("确定",
-							new DialogInterface.OnClickListener() {
-
-								@Override
-								public void onClick(DialogInterface dialog,
-										int which) {
-									finish();
-									Intent intent = new Intent(
-											MainActivity.this,
-											PlayService.class);
-									// unregisterReceiver(homeReceiver);
-									stopService(intent); // 停止后台服务
-								}
-							}).show();
-
-		}
-		return super.onKeyDown(keyCode, event);
-	}
-
 }
