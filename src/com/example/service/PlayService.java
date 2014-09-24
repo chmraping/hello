@@ -1,46 +1,161 @@
 package com.example.service;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import android.annotation.SuppressLint;
 import android.app.Service;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.media.MediaPlayer.OnCompletionListener;
 import android.media.MediaPlayer.OnPreparedListener;
+import android.os.Handler;
 import android.os.IBinder;
 
 import com.example.entity.Constant;
+import com.example.entity.Music;
 
 @SuppressLint("NewApi")
 public class PlayService extends Service {
-	private MediaPlayer mediaPlayer = new MediaPlayer();
+	private MediaPlayer mediaPlayer;
 	private String path;
 	private int msg;
 	boolean isAlive;
 	boolean isPause;
+	private List<Music> musicList = new ArrayList<Music>();// 音乐列表
+	private int listPosition = 0; // 记录当前正在播放的音乐
+	private int status = 3; // 播放状态，默认为顺序播放
+	private MyReceiver myReceiver; // 自定义广播接收器
+	private int currentTime; // 当前播放进度
+	private int duration; // 播放长度
+	// private LrcProcess mLrcProcess; //歌词处理
+	// private List<LrcContent> lrcList = new ArrayList<LrcContent>();
+	// //存放歌词列表对象
+	private int index = 0; // 歌词检索值
 
-	// private Thread thread;
+	// 服务要发送的一些Action
+	public static final String UPDATE_ACTION = "com.wwj.action.UPDATE_ACTION"; // 更新动作
+	public static final String CTL_ACTION = "com.wwj.action.CTL_ACTION"; // 控制动作
+	public static final String MUSIC_CURRENT = "com.wwj.action.MUSIC_CURRENT"; // 当前音乐播放时间更新动作
+	public static final String MUSIC_DURATION = "com.wwj.action.MUSIC_DURATION";// 新音乐长度更新动作
+	public static final String SHOW_LRC = "com.wwj.action.SHOW_LRC"; // 通知显示歌词
+
+	/**
+	 * handler用来接收消息，来发送广播更新播放时间
+	 */
+	@SuppressLint("HandlerLeak")
+	private Handler handler = new Handler() {
+		public void handleMessage(android.os.Message msg) {
+			if (msg.what == 1) {
+				if (mediaPlayer != null) {
+					currentTime = mediaPlayer.getCurrentPosition(); // 获取当前音乐播放的位置
+					Intent intent = new Intent();
+					intent.setAction(MUSIC_CURRENT);
+					intent.putExtra("currentTime", currentTime);
+					sendBroadcast(intent); // 给PlayerActivity发送广播
+					handler.sendEmptyMessageDelayed(1, 1000);
+				}
+			}
+		};
+	};
 
 	@Override
-	public IBinder onBind(Intent arg0) {
-		return null;
+	public void onCreate() {
+		super.onCreate();
+
+		mediaPlayer = new MediaPlayer();
+		/**
+		 * 设置音乐播放完成时的监听器
+		 */
+		mediaPlayer.setOnCompletionListener(new OnCompletionListener() {
+
+			@Override
+			public void onCompletion(MediaPlayer mp) {
+				if (status == 1) { // 单曲循环
+					mediaPlayer.start();
+				} else if (status == 2) { // 全部循环
+					listPosition++;
+					if (listPosition > musicList.size() - 1) { // 变为第一首的位置继续播放
+						listPosition = 0;
+					}
+					Intent sendIntent = new Intent(UPDATE_ACTION);
+					sendIntent.putExtra("listPosition", listPosition);
+					// 发送广播，将被Activity组件中的BroadcastReceiver接收到
+					sendBroadcast(sendIntent);
+					path = musicList.get(listPosition).getSongLink();
+					play(0);
+				} else if (status == 3) { // 顺序播放
+					listPosition++; // 下一首位置
+					if (listPosition <= musicList.size() - 1) {
+						Intent sendIntent = new Intent(UPDATE_ACTION);
+						sendIntent.putExtra("listPosition", listPosition);
+						// 发送广播，将被Activity组件中的BroadcastReceiver接收到
+						sendBroadcast(sendIntent);
+						path = musicList.get(listPosition).getSongLink();
+						play(0);
+					} else {
+						mediaPlayer.seekTo(0);
+						listPosition = 0;
+						Intent sendIntent = new Intent(UPDATE_ACTION);
+						sendIntent.putExtra("listPosition", listPosition);
+						// 发送广播，将被Activity组件中的BroadcastReceiver接收到
+						sendBroadcast(sendIntent);
+					}
+				} else if (status == 4) { // 随机播放
+					listPosition = getRandomIndex(musicList.size() - 1);
+					System.out.println("currentIndex ->" + listPosition);
+					Intent sendIntent = new Intent(UPDATE_ACTION);
+					sendIntent.putExtra("listPosition", listPosition);
+					// 发送广播，将被Activity组件中的BroadcastReceiver接收到
+					sendBroadcast(sendIntent);
+					path = musicList.get(listPosition).getSongLink();
+					play(0);
+				}
+			}
+		});
+
+		// myReceiver = new MyReceiver();
+		// IntentFilter filter = new IntentFilter();
+		// filter.addAction(CTL_ACTION);
+		// filter.addAction(SHOW_LRC);
+		// registerReceiver(myReceiver, filter);
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public int onStartCommand(Intent intent, int flags, int startId) {
-		path = intent.getStringExtra("songLink");
+
 		msg = intent.getIntExtra("MSG", 0);
-		if(mediaPlayer.isPlaying()){
-			System.out.println(1);
+		listPosition = intent.getIntExtra("listPosition", listPosition);
+		if (musicList == null) {
+			musicList = (List<Music>) intent.getSerializableExtra("musicList");
 		}
-		if (msg == Constant.PlayerMsg.PLAY_MSG) { // 异步缓冲
+		path = intent.getStringExtra("songLink");
+		
+		if (msg == Constant.PlayerMsg.PLAY_MSG) { // 直接播放音乐
 			play(0);
-		} else if (msg == Constant.PlayerMsg.PAUSE_MSG) {
+		} else if (msg == Constant.PlayerMsg.PAUSE_MSG) { // 暂停
 			pause();
-		} else if (msg == Constant.PlayerMsg.STOP_MSG) {
+		} else if (msg == Constant.PlayerMsg.STOP_MSG) { // 停止
 			stop();
-		} else if (msg == Constant.PlayerMsg.CONTINUE_MSG) {
+		} else if (msg == Constant.PlayerMsg.CONTINUE_MSG) { // 继续播放
 			resume();
+		} else if (msg == Constant.PlayerMsg.PREVIOUS_MSG) { // 上一首
+			previous();
+		} else if (msg == Constant.PlayerMsg.NEXT_MSG) { // 下一首
+			next();
+		} else if (msg == Constant.PlayerMsg.PROGRESS_CHANGE) { // 进度更新
+			currentTime = intent.getIntExtra("progress", -1);
+			play(currentTime);
+		} else if (msg == Constant.PlayerMsg.PLAYING_MSG) {
+			handler.sendEmptyMessage(1);
 		}
+		
+		
+
 		return super.onStartCommand(intent, flags, startId);
 	}
 
@@ -71,6 +186,7 @@ public class PlayService extends Service {
 			// mediaPlayer.setOnPreparedListener(this);
 			mediaPlayer.prepareAsync(); // 异步缓冲
 			mediaPlayer.setOnPreparedListener(new PreparedListener(position));// 注册一个监听器
+			handler.sendEmptyMessage(1);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -83,9 +199,31 @@ public class PlayService extends Service {
 		if (mediaPlayer != null && mediaPlayer.isPlaying()) {
 			mediaPlayer.pause();
 			isPause = true;
-		}else{
+		} else {
 			stop();
 		}
+	}
+
+	/**
+	 * 上一首
+	 */
+	private void previous() {
+		Intent sendIntent = new Intent(UPDATE_ACTION);
+		sendIntent.putExtra("listPosition", listPosition);
+		// 发送广播，将被Activity组件中的BroadcastReceiver接收到
+		sendBroadcast(sendIntent);
+		play(0);
+	}
+
+	/**
+	 * 下一首
+	 */
+	private void next() {
+		Intent sendIntent = new Intent(UPDATE_ACTION);
+		sendIntent.putExtra("listPosition", listPosition);
+		// 发送广播，将被Activity组件中的BroadcastReceiver接收到
+		sendBroadcast(sendIntent);
+		play(0);
 	}
 
 	/**
@@ -131,9 +269,48 @@ public class PlayService extends Service {
 			}
 		}
 	}
-	// /** Called when MediaPlayer is ready */
-	// public void onPrepared(MediaPlayer player) {
-	// player.start();
-	// }
 
+	@Override
+	public IBinder onBind(Intent arg0) {
+		return null;
+	}
+
+	public class MyReceiver extends BroadcastReceiver {
+
+		@Override
+		public void onReceive(Context context, Intent intent) {
+			int control = intent.getIntExtra("control", -1);
+			switch (control) {
+			case 1:
+				status = 1; // 将播放状态置为1表示：单曲循环
+				break;
+			case 2:
+				status = 2; // 将播放状态置为2表示：全部循环
+				break;
+			case 3:
+				status = 3; // 将播放状态置为3表示：顺序播放
+				break;
+			case 4:
+				status = 4; // 将播放状态置为4表示：随机播放
+				break;
+			}
+
+			String action = intent.getAction();
+			if (action.equals(SHOW_LRC)) {
+				listPosition = intent.getIntExtra("listPosition", -1);
+				// initLrc();
+			}
+		}
+	}
+
+	/**
+	 * 获取随机位置
+	 * 
+	 * @param end
+	 * @return
+	 */
+	protected int getRandomIndex(int end) {
+		int index = (int) (Math.random() * end);
+		return index;
+	}
 }
