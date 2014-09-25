@@ -45,7 +45,7 @@ public class MainActivity extends Activity implements OnClickListener {
 	private RelativeLayout play_layout;
 	private ListView musicListView;// 音乐列表界面
 	private SimpleAdapter mAdapter;// 列表界面的适配器
-	private List<Music> musicList = new ArrayList<Music>();// 音乐列表
+	private List<Music> musicList ;// 音乐列表
 
 	private boolean isPlaying = false; // 正在播放
 	private boolean isPause = false; // 暂停
@@ -179,7 +179,7 @@ public class MainActivity extends Activity implements OnClickListener {
 		JSONObject musicJsonObject = new JSONObject(musicJson);
 		JSONObject data = (JSONObject) musicJsonObject.get("data");
 		array = (JSONArray) data.get("songList");
-		
+		musicList = new ArrayList<Music>();
 		for (int i = 0; i < array.length(); i++) {
 			JSONObject o = (JSONObject) array.get(i);
 			Music music = new Music();
