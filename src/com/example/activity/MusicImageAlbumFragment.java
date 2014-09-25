@@ -18,7 +18,7 @@ import com.example.hello.R;
 
 
 public class MusicImageAlbumFragment extends Fragment {
-	private ImageView imageView;
+	private ImageView  imageView;
 	private Bitmap bitmap;
 	private String url;
 	@SuppressLint("HandlerLeak")
@@ -58,7 +58,7 @@ public class MusicImageAlbumFragment extends Fragment {
 		View view = inflater.inflate(R.layout.music_image, null);
 		imageView = (ImageView) view.findViewById(R.id.music_image_album);
 //		imageView.setBackgroundResource(R.drawable.loading);
-
+		updateAlbum();
 		return view;
 	}
 

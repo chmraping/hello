@@ -1,51 +1,35 @@
-package com.example.activity;
+package com.example.util;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.Serializable;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
 import android.content.Intent;
-import android.os.Bundle;
-import android.os.Handler;
-import android.support.v4.app.Fragment;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.view.animation.AnimationUtils;
 
 import com.example.entity.LrcContent;
-import com.example.hello.R;
-import com.example.view.LrcView;
 
-public class LrcFragment extends Fragment {
-	public static LrcView lrcView; // 自定义歌词视图
-	private View view;
+/**
+ * 
+ * 
+ * @author 处理歌词的类
+ */
+public class LrcProcess {
 	private List<LrcContent> lrcList; // List集合存放歌词内容对象
 	private LrcContent mLrcContent; // 声明一个歌词内容对象
-	private String lrcLink;
-	public static final String SHOW_LRC = "com.wwj.action.SHOW_LRC"; // 通知显示歌词
+	private String path;
 	public static final String SHOW_LRC_FINISHED = "com.wwj.action.SHOW_LRC_FINISHED"; // 通知显示歌词
-	Handler handler = new Handler();
 
-	@Override
-	public View onCreateView(LayoutInflater inflater, ViewGroup container,
-			Bundle savedInstanceState) {
-		view = inflater.inflate(R.layout.music_lyric, null);
-		lrcView = (LrcView) view.findViewById(R.id.lrcShowView);
-		Intent intent = new Intent();
-		view.getContext().sendBroadcast(intent);
+	/**
+	 * 无参构造函数用来实例化对象
+	 */
+	public LrcProcess() {
 		mLrcContent = new LrcContent();
 		lrcList = new ArrayList<LrcContent>();
-		if (lrcLink != null) {
-			showLRC(lrcLink);
-		}
-		return view;
 	}
 
 	/**
@@ -54,11 +38,11 @@ public class LrcFragment extends Fragment {
 	 * @param path
 	 * @return
 	 */
-	public void showLRC(String path) {
+	public void readLRC(String path) {
 
 		// File f = new File(path.replace(".mp3", ".lrc"));
-		this.lrcLink = path;
-		if (view != null) {
+		this.path = path;
+		if (path != null) {
 			new Thread(runnable).start();
 		}
 	}
@@ -72,14 +56,13 @@ public class LrcFragment extends Fragment {
 				// 定义一个StringBuilder对象，用来存放歌词内容
 				// 创建一个文件输入流对象
 				// FileInputStream fis = new FileInputStream(f);
-				URL url = new URL(lrcLink);
-				HttpURLConnection connection = (HttpURLConnection) url
-						.openConnection();
-				connection.setConnectTimeout(5 * 1000);
-				connection.setDoInput(true);
-				connection.connect();
-				InputStreamReader isr = new InputStreamReader(
-						connection.getInputStream(), "utf-8");
+				URL url = new URL(path);
+				HttpURLConnection connection = (HttpURLConnection) url.openConnection();  
+	            connection.setConnectTimeout(5*1000);  
+	            connection.setDoInput(true);  
+	            connection.connect();  
+				InputStreamReader isr = new InputStreamReader(connection.getInputStream(),
+						"utf-8");
 
 				BufferedReader br = new BufferedReader(isr);
 				String s = "";
@@ -105,16 +88,9 @@ public class LrcFragment extends Fragment {
 						mLrcContent = new LrcContent();
 					}
 				}
-				// 传回处理后的歌词文件
-				lrcView.setmLrcList(lrcList);
-				// 切换带动画显示歌词
-				lrcView.setAnimation(AnimationUtils.loadAnimation(
-						view.getContext(), R.anim.alpha_z));
 				Intent intent = new Intent();
-				intent.setAction(SHOW_LRC);
-				intent.putExtra("lrcList", (Serializable) lrcList);
-				view.getContext().sendBroadcast(intent);
-
+				intent.setAction(SHOW_LRC_FINISHED);
+				
 			} catch (FileNotFoundException e) {
 				e.printStackTrace();
 				stringBuilder.append("木有歌词文件，赶紧去下载！...");
@@ -151,13 +127,4 @@ public class LrcFragment extends Fragment {
 	public List<LrcContent> getLrcList() {
 		return lrcList;
 	}
-
-	public String getLrcLink() {
-		return lrcLink;
-	}
-
-	public void setLrcLink(String lrcLink) {
-		this.lrcLink = lrcLink;
-	}
-
 }

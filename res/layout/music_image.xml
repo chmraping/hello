@@ -4,13 +4,15 @@
     android:layout_height="wrap_content"
     android:orientation="vertical" 
     >
-
+<!--
+android:theme="@android:style/Theme.Translucent"  透明
+  -->
     <ImageView
         android:id="@+id/music_image_album"
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"
         android:scaleType="fitCenter" 
-        android:theme="@android:style/Theme.Translucent"
+        android:background="#ffffff"
         
         />
 

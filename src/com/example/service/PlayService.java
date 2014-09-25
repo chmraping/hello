@@ -8,15 +8,22 @@ import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.media.MediaPlayer.OnCompletionListener;
 import android.media.MediaPlayer.OnPreparedListener;
 import android.os.Handler;
 import android.os.IBinder;
+import android.view.animation.AnimationUtils;
 
+import com.example.activity.LrcFragment;
+import com.example.activity.PlayActivity;
 import com.example.entity.Constant;
+import com.example.entity.LrcContent;
 import com.example.entity.Music;
+import com.example.hello.R;
+import com.example.util.LrcProcess;
 
 @SuppressLint("NewApi")
 public class PlayService extends Service {
@@ -31,9 +38,8 @@ public class PlayService extends Service {
 	private MyReceiver myReceiver; // 自定义广播接收器
 	private int currentTime; // 当前播放进度
 	private int duration; // 播放长度
-	// private LrcProcess mLrcProcess; //歌词处理
-	// private List<LrcContent> lrcList = new ArrayList<LrcContent>();
-	// //存放歌词列表对象
+	private LrcProcess mLrcProcess; // 歌词处理
+	private List<LrcContent> lrcList = new ArrayList<LrcContent>(); // 存放歌词列表对象
 	private int index = 0; // 歌词检索值
 
 	// 服务要发送的一些Action
@@ -42,6 +48,7 @@ public class PlayService extends Service {
 	public static final String MUSIC_CURRENT = "com.wwj.action.MUSIC_CURRENT"; // 当前音乐播放时间更新动作
 	public static final String MUSIC_DURATION = "com.wwj.action.MUSIC_DURATION";// 新音乐长度更新动作
 	public static final String SHOW_LRC = "com.wwj.action.SHOW_LRC"; // 通知显示歌词
+	public static final String SHOW_LRC_FINISHED = "com.wwj.action.SHOW_LRC_FINISHED"; // 通知显示歌词
 
 	/**
 	 * handler用来接收消息，来发送广播更新播放时间
@@ -117,11 +124,12 @@ public class PlayService extends Service {
 			}
 		});
 
-		// myReceiver = new MyReceiver();
-		// IntentFilter filter = new IntentFilter();
-		// filter.addAction(CTL_ACTION);
-		// filter.addAction(SHOW_LRC);
-		// registerReceiver(myReceiver, filter);
+		 myReceiver = new MyReceiver();
+		 IntentFilter filter = new IntentFilter();
+		 filter.addAction(CTL_ACTION);
+		 filter.addAction(SHOW_LRC);
+		 filter.addAction(SHOW_LRC_FINISHED);
+		 registerReceiver(myReceiver, filter);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -130,11 +138,11 @@ public class PlayService extends Service {
 
 		msg = intent.getIntExtra("MSG", 0);
 		listPosition = intent.getIntExtra("listPosition", listPosition);
-		if (musicList == null) {
+		if (musicList.size() == 0) {
 			musicList = (List<Music>) intent.getSerializableExtra("musicList");
 		}
 		path = intent.getStringExtra("songLink");
-		
+
 		if (msg == Constant.PlayerMsg.PLAY_MSG) { // 直接播放音乐
 			play(0);
 		} else if (msg == Constant.PlayerMsg.PAUSE_MSG) { // 暂停
@@ -153,8 +161,6 @@ public class PlayService extends Service {
 		} else if (msg == Constant.PlayerMsg.PLAYING_MSG) {
 			handler.sendEmptyMessage(1);
 		}
-		
-		
 
 		return super.onStartCommand(intent, flags, startId);
 	}
@@ -263,7 +269,7 @@ public class PlayService extends Service {
 
 		@Override
 		public void onPrepared(MediaPlayer mp) {
-			mediaPlayer.start(); // 开始播放
+//			mediaPlayer.start(); // 开始播放
 			if (positon > 0) { // 如果音乐不是从头播放
 				mediaPlayer.seekTo(positon);
 			}
@@ -277,6 +283,7 @@ public class PlayService extends Service {
 
 	public class MyReceiver extends BroadcastReceiver {
 
+		@SuppressWarnings("unchecked")
 		@Override
 		public void onReceive(Context context, Intent intent) {
 			int control = intent.getIntExtra("control", -1);
@@ -298,9 +305,52 @@ public class PlayService extends Service {
 			String action = intent.getAction();
 			if (action.equals(SHOW_LRC)) {
 				listPosition = intent.getIntExtra("listPosition", -1);
-				// initLrc();
+				lrcList = (List<LrcContent>) intent.getSerializableExtra("lrcList");
+				handler.post(mRunnable);
 			}
 		}
+	}
+
+	Runnable mRunnable = new Runnable() {
+
+		@Override
+		public void run() {
+//			PlayActivity.lrcView.setIndex(lrcIndex());
+//			PlayActivity.lrcView.invalidate();
+			LrcFragment.lrcView.setIndex(lrcIndex());
+			LrcFragment.lrcView.invalidate();
+			handler.postDelayed(mRunnable, 100);
+		}
+	};
+
+	/**
+	 * 根据时间获取歌词显示的索引值
+	 * 
+	 * @return
+	 */
+	public int lrcIndex() {
+		if (mediaPlayer.isPlaying()) {
+			currentTime = mediaPlayer.getCurrentPosition();
+			duration = mediaPlayer.getDuration();
+		}
+		if (currentTime < duration) {
+			for (int i = 0; i < lrcList.size(); i++) {
+				if (i < lrcList.size() - 1) {
+					if (currentTime < lrcList.get(i).getLrcTime() && i == 0) {
+						index = i;
+					}
+					if (currentTime > lrcList.get(i).getLrcTime()
+							&& currentTime < lrcList.get(i + 1).getLrcTime()) {
+						index = i;
+					}
+				}
+				if (i == lrcList.size() - 1
+						&& currentTime > lrcList.get(i).getLrcTime()) {
+					index = i;
+				}
+			}
+		}
+		return index;
 	}
 
 	/**

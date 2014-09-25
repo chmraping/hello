@@ -15,6 +15,7 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.SeekBar;
+import android.widget.SeekBar.OnSeekBarChangeListener;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -23,7 +24,7 @@ import com.example.entity.Constant;
 import com.example.entity.Music;
 import com.example.hello.R;
 import com.example.service.PlayService;
-
+import com.example.view.LrcView;
 
 public class PlayActivity extends FragmentActivity {
 
@@ -50,9 +51,10 @@ public class PlayActivity extends FragmentActivity {
 
 	private boolean isPlaying; // 正在播放
 	private boolean isPause; // 暂停
+	public static LrcView lrcView; // 自定义歌词视图
 
 	private MusicImageAlbumFragment musicAlbumFragment = new MusicImageAlbumFragment();
-
+	private LrcFragment lrcFragment = new LrcFragment();
 	private PlayerReceiver playerReceiver;
 	public static final String UPDATE_ACTION = "com.wwj.action.UPDATE_ACTION"; // 更新动作
 	public static final String CTL_ACTION = "com.wwj.action.CTL_ACTION"; // 控制动作
@@ -73,7 +75,7 @@ public class PlayActivity extends FragmentActivity {
 
 		fragments = new ArrayList<Fragment>();
 		fragments.add(musicAlbumFragment);
-		fragments.add(new lrcFragment());
+		fragments.add(lrcFragment);
 		adapter = new MusicPageAdapter(getSupportFragmentManager(), fragments);
 		pager.setAdapter(adapter);
 		registerReceiver();
@@ -84,10 +86,11 @@ public class PlayActivity extends FragmentActivity {
 	private void initView() {
 		musicTitle.setText(music.getSongName());
 		musicAlbumFragment.setUrl(music.getSongPicRadio());
-		musicAlbumFragment.updateAlbum();
-		if(isPlaying){
+		lrcFragment.setLrcLink(music.getLrcLink());
+		if (isPlaying) {
 			play.setBackgroundResource(R.drawable.pause);
 		}
+
 	}
 
 	private void findViewById() {
@@ -106,6 +109,7 @@ public class PlayActivity extends FragmentActivity {
 		play.setOnClickListener(viewOnclickListener);
 		previous.setOnClickListener(viewOnclickListener);
 		next.setOnClickListener(viewOnclickListener);
+		music_progressBar.setOnSeekBarChangeListener(new SeekBarChangeListener());
 	}
 
 	private void registerReceiver() {
@@ -123,7 +127,9 @@ public class PlayActivity extends FragmentActivity {
 	 */
 	private void getDataFromBundle() {
 		Intent intent = getIntent();
-		listPosition = intent.getIntExtra("listPosition", 0);
+		if (listPosition == 0) {
+			listPosition = intent.getIntExtra("listPosition", 0);
+		}
 		isPlaying = intent.getBooleanExtra("isPlaying", false);
 		isPause = intent.getBooleanExtra("isPause", false);
 		musicList = (List<Music>) intent.getSerializableExtra("musicList");
@@ -144,14 +150,14 @@ public class PlayActivity extends FragmentActivity {
 			switch (v.getId()) {
 			case R.id.play:
 				if (isPlaying) {
-					play.setBackgroundResource(R.drawable.pause_selector);
+					play.setBackgroundResource(R.drawable.play_selector);
 					intent.setClass(PlayActivity.this, PlayService.class);
 					intent.putExtra("MSG", Constant.PlayerMsg.PAUSE_MSG);
 					startService(intent);
 					isPlaying = false;
 					isPause = true;
 				} else if (isPause) {
-					play.setBackgroundResource(R.drawable.play_selector);
+					play.setBackgroundResource(R.drawable.pause_selector);
 					intent.setClass(PlayActivity.this, PlayService.class);
 					intent.putExtra("MSG", Constant.PlayerMsg.CONTINUE_MSG);
 					startService(intent);
@@ -177,8 +183,8 @@ public class PlayActivity extends FragmentActivity {
 			if (listPosition >= 0) {
 				music = musicList.get(listPosition); // 上一首MP3
 
-				Intent intent = new Intent(PlayActivity.this,PlayService.class);
-//				intent.setAction("com.wwj.media.MUSIC_SERVICE");
+				Intent intent = new Intent(PlayActivity.this, PlayService.class);
+				// intent.setAction("com.wwj.media.MUSIC_SERVICE");
 				intent.putExtra("songLink", music.getSongLink());
 				intent.putExtra("listPosition", listPosition);
 				intent.putExtra("MSG", Constant.PlayerMsg.PREVIOUS_MSG);
@@ -199,8 +205,8 @@ public class PlayActivity extends FragmentActivity {
 			listPosition = listPosition + 1;
 			if (listPosition <= musicList.size() - 1) {
 				music = musicList.get(listPosition);
-				Intent intent = new Intent(PlayActivity.this,PlayService.class);
-//				intent.setAction("com.wwj.media.MUSIC_SERVICE");
+				Intent intent = new Intent(PlayActivity.this, PlayService.class);
+				// intent.setAction("com.wwj.media.MUSIC_SERVICE");
 				intent.putExtra("songLink", music.getSongLink());
 				intent.putExtra("listPosition", listPosition);
 				intent.putExtra("MSG", Constant.PlayerMsg.NEXT_MSG);
@@ -218,13 +224,12 @@ public class PlayActivity extends FragmentActivity {
 	/**
 	 * 用来接收从service传回来的广播的内部类
 	 * 
-	 * @author wwj
 	 * 
 	 */
 	public class PlayerReceiver extends BroadcastReceiver {
 
 		Music music = musicList.get(listPosition);
-		
+
 		@Override
 		public void onReceive(Context context, Intent intent) {
 			String action = intent.getAction();
@@ -241,23 +246,65 @@ public class PlayActivity extends FragmentActivity {
 				finalProgress.setText(duration);
 			} else if (action.equals(UPDATE_ACTION)) {
 				// 获取Intent中的current消息，current代表当前正在播放的歌曲
-//				listPosition = intent.getIntExtra("current", -1);
+				// listPosition = intent.getIntExtra("current", -1);
 				songLink = musicList.get(listPosition).getSongLink();
 				music = musicList.get(listPosition);
 				if (listPosition >= 0) {
-					musicTitle.setText(music
-							.getSongName());
+					musicTitle.setText(music.getSongName());
 					// musicArtist.setText(musicList.get(listPosition).getArtistName());
+					play.setBackgroundResource(R.drawable.pause);
 				}
 				if (listPosition == 0) {
-					finalProgress
-							.setText(music.getTime());
+					finalProgress.setText(music.getTime());
 					play.setBackgroundResource(R.drawable.pause_selector);
 					isPause = true;
 				}
 				musicAlbumFragment.setUrl(music.getSongPicRadio());
 				musicAlbumFragment.updateAlbum();
+				lrcFragment.showLRC(music.getLrcLink());
 			}
 		}
+	}
+	/**
+	 * 实现监听Seekbar的类
+	 * 
+	 * @author wwj
+	 * 
+	 */
+	private class SeekBarChangeListener implements OnSeekBarChangeListener {
+
+		@Override
+		public void onProgressChanged(SeekBar seekBar, int progress,
+				boolean fromUser) {
+			switch(seekBar.getId()) {
+			case R.id.audioTrack:
+				if (fromUser) {
+					audioTrackChange(progress); // 用户控制进度的改变
+				}
+				break;
+			}
+		}
+
+		@Override
+		public void onStartTrackingTouch(SeekBar seekBar) {
+
+		}
+
+		@Override
+		public void onStopTrackingTouch(SeekBar seekBar) {
+
+		}
+
+	}
+	/**
+	 * 播放进度改变
+	 * @param progress
+	 */
+	public void audioTrackChange(int progress) {
+		Intent intent = new Intent(PlayActivity.this,PlayService.class);
+		intent.putExtra("listPosition", listPosition);
+		intent.putExtra("MSG", Constant.PlayerMsg.PROGRESS_CHANGE);
+		intent.putExtra("progress", progress);
+		startService(intent);
 	}
 }

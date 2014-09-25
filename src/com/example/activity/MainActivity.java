@@ -51,6 +51,8 @@ public class MainActivity extends Activity implements OnClickListener {
 	private boolean isPause = false; // 暂停
 
 	private Button playBtn;
+	private Button refreshBtn;
+	private Thread thread;
 	// private Button previousBtn;
 	// private Button nextBtn;
 
@@ -80,7 +82,9 @@ public class MainActivity extends Activity implements OnClickListener {
 
 			}
 		});
-		new Thread(runnable).start();
+		thread =new Thread(runnable);
+		thread.start();
+		
 
 		findViewById();// 找到界面上的控件
 		setViewOnclickListener();// 设置监听器
@@ -89,10 +93,12 @@ public class MainActivity extends Activity implements OnClickListener {
 
 	private void setViewOnclickListener() {
 		playBtn.setOnClickListener(this);
+		refreshBtn.setOnClickListener(this);
 	}
 
 	private void findViewById() {
 		playBtn = (Button) findViewById(R.id.play);
+		refreshBtn = (Button) findViewById(R.id.refresh);
 	}
 
 	@SuppressLint("HandlerLeak")
@@ -185,9 +191,9 @@ public class MainActivity extends Activity implements OnClickListener {
 			music.setSongPicBig(o.getString("songPicBig"));
 			music.setSongPicRadio(o.getString("songPicRadio"));
 			music.setSize(o.getString("size"));
-//			 music.setSongPicBig(getPicBig(o.getString("songPicBig")));
 			music.setTime(o.getString("time"));
-			music.setLrcLink(o.getString("lrcLink"));
+			
+			music.setLrcLink("http://musicdata.baidu.com"+o.getString("lrcLink"));
 			musicList.add(music);
 		}
 
@@ -267,6 +273,7 @@ public class MainActivity extends Activity implements OnClickListener {
 		if (musicList != null) {
 			Music music = musicList.get(listPosition);
 			intent.putExtra("songLink", music.getSongLink());
+			intent.putExtra("listPosition", listPosition);
 			intent.putExtra("MSG", Constant.PlayerMsg.PLAY_MSG);
 			intent.putExtra("musicList", (Serializable)musicList);
 			intent.setClass(MainActivity.this, PlayService.class);
@@ -308,9 +315,13 @@ public class MainActivity extends Activity implements OnClickListener {
 				playMusic();
 			}
 			break;
-
+		case R.id.refresh:
+			thread =new Thread(runnable);
+			thread.start();
 		}
 	}
+
+
 
 	/**
 	 * 按返回键弹出对话框确定退出
