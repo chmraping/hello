@@ -269,7 +269,7 @@ public class PlayService extends Service {
 
 		@Override
 		public void onPrepared(MediaPlayer mp) {
-//			mediaPlayer.start(); // 开始播放
+			mediaPlayer.start(); // 开始播放
 			if (positon > 0) { // 如果音乐不是从头播放
 				mediaPlayer.seekTo(positon);
 			}
