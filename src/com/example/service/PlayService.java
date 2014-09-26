@@ -15,15 +15,12 @@ import android.media.MediaPlayer.OnCompletionListener;
 import android.media.MediaPlayer.OnPreparedListener;
 import android.os.Handler;
 import android.os.IBinder;
-import android.view.animation.AnimationUtils;
 
 import com.example.activity.LrcFragment;
-import com.example.activity.PlayActivity;
 import com.example.entity.Constant;
 import com.example.entity.LrcContent;
+import com.example.entity.MediaApp;
 import com.example.entity.Music;
-import com.example.hello.R;
-import com.example.util.LrcProcess;
 
 @SuppressLint("NewApi")
 public class PlayService extends Service {
@@ -32,13 +29,13 @@ public class PlayService extends Service {
 	private int msg;
 	boolean isAlive;
 	boolean isPause;
+	private MediaApp mediaApp;
 	private List<Music> musicList = new ArrayList<Music>();// 音乐列表
-	private int listPosition = 0; // 记录当前正在播放的音乐
+	private int listPosition; // 记录当前正在播放的音乐
 	private int status = 3; // 播放状态，默认为顺序播放
 	private MyReceiver myReceiver; // 自定义广播接收器
 	private int currentTime; // 当前播放进度
 	private int duration; // 播放长度
-	private LrcProcess mLrcProcess; // 歌词处理
 	private List<LrcContent> lrcList = new ArrayList<LrcContent>(); // 存放歌词列表对象
 	private int index = 0; // 歌词检索值
 
@@ -72,7 +69,7 @@ public class PlayService extends Service {
 	@Override
 	public void onCreate() {
 		super.onCreate();
-
+		mediaApp =(MediaApp) getApplication();
 		mediaPlayer = new MediaPlayer();
 		/**
 		 * 设置音乐播放完成时的监听器
@@ -85,8 +82,10 @@ public class PlayService extends Service {
 					mediaPlayer.start();
 				} else if (status == 2) { // 全部循环
 					listPosition++;
+					mediaApp.setListPosition(listPosition);
 					if (listPosition > musicList.size() - 1) { // 变为第一首的位置继续播放
 						listPosition = 0;
+						mediaApp.setListPosition(listPosition);
 					}
 					Intent sendIntent = new Intent(UPDATE_ACTION);
 					sendIntent.putExtra("listPosition", listPosition);
@@ -96,6 +95,7 @@ public class PlayService extends Service {
 					play(0);
 				} else if (status == 3) { // 顺序播放
 					listPosition++; // 下一首位置
+					mediaApp.setListPosition(listPosition);
 					if (listPosition <= musicList.size() - 1) {
 						Intent sendIntent = new Intent(UPDATE_ACTION);
 						sendIntent.putExtra("listPosition", listPosition);
@@ -106,6 +106,7 @@ public class PlayService extends Service {
 					} else {
 						mediaPlayer.seekTo(0);
 						listPosition = 0;
+						mediaApp.setListPosition(listPosition);
 						Intent sendIntent = new Intent(UPDATE_ACTION);
 						sendIntent.putExtra("listPosition", listPosition);
 						// 发送广播，将被Activity组件中的BroadcastReceiver接收到
@@ -113,6 +114,7 @@ public class PlayService extends Service {
 					}
 				} else if (status == 4) { // 随机播放
 					listPosition = getRandomIndex(musicList.size() - 1);
+					mediaApp.setListPosition(listPosition);
 					System.out.println("currentIndex ->" + listPosition);
 					Intent sendIntent = new Intent(UPDATE_ACTION);
 					sendIntent.putExtra("listPosition", listPosition);
@@ -124,23 +126,20 @@ public class PlayService extends Service {
 			}
 		});
 
-		 myReceiver = new MyReceiver();
-		 IntentFilter filter = new IntentFilter();
-		 filter.addAction(CTL_ACTION);
-		 filter.addAction(SHOW_LRC);
-		 filter.addAction(SHOW_LRC_FINISHED);
-		 registerReceiver(myReceiver, filter);
+		myReceiver = new MyReceiver();
+		IntentFilter filter = new IntentFilter();
+		filter.addAction(CTL_ACTION);
+		filter.addAction(SHOW_LRC);
+		filter.addAction(SHOW_LRC_FINISHED);
+		registerReceiver(myReceiver, filter);
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public int onStartCommand(Intent intent, int flags, int startId) {
 
 		msg = intent.getIntExtra("MSG", 0);
-		listPosition = intent.getIntExtra("listPosition", listPosition);
-		if (musicList.size() == 0) {
-			musicList = (List<Music>) intent.getSerializableExtra("musicList");
-		}
+		listPosition = mediaApp.getListPosition();
+		musicList = mediaApp.getMusicList();
 		path = intent.getStringExtra("songLink");
 
 		if (msg == Constant.PlayerMsg.PLAY_MSG) { // 直接播放音乐
@@ -304,8 +303,10 @@ public class PlayService extends Service {
 
 			String action = intent.getAction();
 			if (action.equals(SHOW_LRC)) {
-				listPosition = intent.getIntExtra("listPosition", -1);
-				lrcList = (List<LrcContent>) intent.getSerializableExtra("lrcList");
+//				listPosition = intent.getIntExtra("listPosition", -1);
+				listPosition = mediaApp.getListPosition();
+				lrcList = (List<LrcContent>) intent
+						.getSerializableExtra("lrcList");
 				handler.post(mRunnable);
 			}
 		}
@@ -315,8 +316,8 @@ public class PlayService extends Service {
 
 		@Override
 		public void run() {
-//			PlayActivity.lrcView.setIndex(lrcIndex());
-//			PlayActivity.lrcView.invalidate();
+			// PlayActivity.lrcView.setIndex(lrcIndex());
+			// PlayActivity.lrcView.invalidate();
 			LrcFragment.lrcView.setIndex(lrcIndex());
 			LrcFragment.lrcView.invalidate();
 			handler.postDelayed(mRunnable, 100);

@@ -21,13 +21,15 @@ import android.widget.Toast;
 
 import com.example.adapter.MusicPageAdapter;
 import com.example.entity.Constant;
+import com.example.entity.MediaApp;
 import com.example.entity.Music;
 import com.example.hello.R;
 import com.example.service.PlayService;
+import com.example.util.MediaUtil;
 import com.example.view.LrcView;
 
 public class PlayActivity extends FragmentActivity {
-
+	private MediaApp mediaApp;
 	private Button play;
 	private Button previous;
 	private Button next;
@@ -69,6 +71,7 @@ public class PlayActivity extends FragmentActivity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.play_activity_layout);
+		mediaApp =(MediaApp) getApplication();
 		findViewById();
 		setViewOnclickListener();
 		getDataFromBundle();
@@ -109,7 +112,7 @@ public class PlayActivity extends FragmentActivity {
 		play.setOnClickListener(viewOnclickListener);
 		previous.setOnClickListener(viewOnclickListener);
 		next.setOnClickListener(viewOnclickListener);
-		music_progressBar.setOnSeekBarChangeListener(new SeekBarChangeListener());
+//		music_progressBar.setOnSeekBarChangeListener(new SeekBarChangeListener());   在线缓冲没解决
 	}
 
 	private void registerReceiver() {
@@ -127,13 +130,16 @@ public class PlayActivity extends FragmentActivity {
 	 */
 	private void getDataFromBundle() {
 		Intent intent = getIntent();
-		if (listPosition == 0) {
-			listPosition = intent.getIntExtra("listPosition", 0);
-		}
+
+		listPosition = mediaApp.getListPosition();
+
 		isPlaying = intent.getBooleanExtra("isPlaying", false);
 		isPause = intent.getBooleanExtra("isPause", false);
-		musicList = (List<Music>) intent.getSerializableExtra("musicList");
+		// musicList = (List<Music>) intent.getSerializableExtra("musicList");
+		mediaApp = (MediaApp) getApplication();
+		musicList = mediaApp.getMusicList();
 		music = musicList.get(listPosition);
+
 	}
 
 	/**
@@ -180,6 +186,7 @@ public class PlayActivity extends FragmentActivity {
 		public void previous_music() {
 			play.setBackgroundResource(R.drawable.play_selector);
 			listPosition = listPosition - 1;
+			mediaApp.setListPosition(listPosition);
 			if (listPosition >= 0) {
 				music = musicList.get(listPosition); // 上一首MP3
 
@@ -203,6 +210,7 @@ public class PlayActivity extends FragmentActivity {
 		public void next_music() {
 			play.setBackgroundResource(R.drawable.play_selector);
 			listPosition = listPosition + 1;
+			mediaApp.setListPosition(listPosition);
 			if (listPosition <= musicList.size() - 1) {
 				music = musicList.get(listPosition);
 				Intent intent = new Intent(PlayActivity.this, PlayService.class);
@@ -214,6 +222,7 @@ public class PlayActivity extends FragmentActivity {
 
 			} else {
 				listPosition = musicList.size() - 1;
+				mediaApp.setListPosition(listPosition);
 				Toast.makeText(PlayActivity.this, "没有下一首了", Toast.LENGTH_SHORT)
 						.show();
 			}
@@ -236,26 +245,27 @@ public class PlayActivity extends FragmentActivity {
 			if (action.equals(MUSIC_CURRENT)) {
 				currentTime = intent.getIntExtra("currentTime", -1);
 				// currentProgress.setText(MediaUtil.formatTime(currentTime));
-				// currentProgress.setText(MediaUtil.formateTime(currentTime));
-				int duration = Integer.parseInt(music.getTime()) * 1000;
+				 currentProgress.setText(MediaUtil.formatTime(currentTime));
+				duration = Integer.parseInt(music.getTime()) * 1000;
 				long pos = music_progressBar.getMax() * currentTime / duration;
 				music_progressBar.setProgress((int) pos);
 			} else if (action.equals(MUSIC_DURATION)) {
-				int duration = intent.getIntExtra("duration", -1);
+				duration = Integer.parseInt(music.getTime()) * 1000;
 				music_progressBar.setMax(duration);
 				finalProgress.setText(duration);
 			} else if (action.equals(UPDATE_ACTION)) {
 				// 获取Intent中的current消息，current代表当前正在播放的歌曲
-				// listPosition = intent.getIntExtra("current", -1);
+				listPosition = mediaApp.getListPosition();
 				songLink = musicList.get(listPosition).getSongLink();
 				music = musicList.get(listPosition);
+				duration = Integer.parseInt(music.getTime()) * 1000;
 				if (listPosition >= 0) {
 					musicTitle.setText(music.getSongName());
 					// musicArtist.setText(musicList.get(listPosition).getArtistName());
 					play.setBackgroundResource(R.drawable.pause);
 				}
 				if (listPosition == 0) {
-					finalProgress.setText(music.getTime());
+					finalProgress.setText(duration);
 					play.setBackgroundResource(R.drawable.pause_selector);
 					isPause = true;
 				}
@@ -265,6 +275,7 @@ public class PlayActivity extends FragmentActivity {
 			}
 		}
 	}
+
 	/**
 	 * 实现监听Seekbar的类
 	 * 
@@ -276,7 +287,7 @@ public class PlayActivity extends FragmentActivity {
 		@Override
 		public void onProgressChanged(SeekBar seekBar, int progress,
 				boolean fromUser) {
-			switch(seekBar.getId()) {
+			switch (seekBar.getId()) {
 			case R.id.audioTrack:
 				if (fromUser) {
 					audioTrackChange(progress); // 用户控制进度的改变
@@ -296,12 +307,14 @@ public class PlayActivity extends FragmentActivity {
 		}
 
 	}
+
 	/**
 	 * 播放进度改变
+	 * 
 	 * @param progress
 	 */
 	public void audioTrackChange(int progress) {
-		Intent intent = new Intent(PlayActivity.this,PlayService.class);
+		Intent intent = new Intent(PlayActivity.this, PlayService.class);
 		intent.putExtra("listPosition", listPosition);
 		intent.putExtra("MSG", Constant.PlayerMsg.PROGRESS_CHANGE);
 		intent.putExtra("progress", progress);

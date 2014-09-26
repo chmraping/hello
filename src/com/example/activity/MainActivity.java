@@ -7,7 +7,9 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Random;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -37,6 +39,7 @@ import android.widget.SimpleAdapter;
 import android.widget.SimpleAdapter.ViewBinder;
 
 import com.example.entity.Constant;
+import com.example.entity.MediaApp;
 import com.example.entity.Music;
 import com.example.hello.R;
 import com.example.service.PlayService;
@@ -46,7 +49,7 @@ public class MainActivity extends Activity implements OnClickListener {
 	private ListView musicListView;// 音乐列表界面
 	private SimpleAdapter mAdapter;// 列表界面的适配器
 	private List<Music> musicList ;// 音乐列表
-
+	private MediaApp mediaApp;
 	private boolean isPlaying = false; // 正在播放
 	private boolean isPause = false; // 暂停
 
@@ -63,6 +66,7 @@ public class MainActivity extends Activity implements OnClickListener {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
+		mediaApp =(MediaApp) getApplication();
 		musicListView = (ListView) findViewById(R.id.musicListView);
 		musicListView.setOnItemClickListener(new MusicListItemClickListener());
 		play_layout = (RelativeLayout) findViewById(R.id.play_layout);
@@ -73,7 +77,7 @@ public class MainActivity extends Activity implements OnClickListener {
 				Intent intent = new Intent(MainActivity.this,
 						PlayActivity.class);
 				Bundle bundle = new Bundle();
-				bundle.putSerializable("musicList", (Serializable) musicList);
+//				bundle.putSerializable("musicList", (Serializable) musicList);
 				bundle.putInt("listPosition", listPosition);
 				bundle.putBoolean("isPlaying", isPlaying);
 				bundle.putBoolean("isPause", isPause);
@@ -161,6 +165,7 @@ public class MainActivity extends Activity implements OnClickListener {
 
 	}
 
+	@SuppressLint("UseValueOf")
 	public void getMusicList() throws Exception {
 		// 百度音乐搜索地址
 		String channelPath = "http://fm.baidu.com/dev/api/?tn=playlist&id=public_yuzhong_huayu&special=flash&prepend=&format=json";
@@ -169,7 +174,16 @@ public class MainActivity extends Activity implements OnClickListener {
 		String channelJson = getJson(channelPath);// 获取该频道返回的musiclist
 		JSONObject channelJsonObject = new JSONObject(channelJson);
 		JSONArray array = (JSONArray) channelJsonObject.get("list");
-		for (int i = 0; i < 10; i++) {
+		//不重复的随机数
+		HashSet<Integer> set = new HashSet<Integer>();
+		while(set.size()<10){
+			set.add(new Integer(new Random().nextInt(100)));
+		}
+//		for (int i = 0; i < 10; i++) {
+//			JSONObject o = (JSONObject) array.get(i);
+//			musicPath = musicPath + o.get("id") + ",";
+//		}
+		for(int i :set){
 			JSONObject o = (JSONObject) array.get(i);
 			musicPath = musicPath + o.get("id") + ",";
 		}
@@ -180,7 +194,8 @@ public class MainActivity extends Activity implements OnClickListener {
 		JSONObject data = (JSONObject) musicJsonObject.get("data");
 		array = (JSONArray) data.get("songList");
 		musicList = new ArrayList<Music>();
-		for (int i = 0; i < array.length(); i++) {
+	
+		for (int i = 0; i < 10; i++) {
 			JSONObject o = (JSONObject) array.get(i);
 			Music music = new Music();
 			music.setArtistName(o.getString("artistName"));
@@ -196,7 +211,8 @@ public class MainActivity extends Activity implements OnClickListener {
 			music.setLrcLink("http://musicdata.baidu.com"+o.getString("lrcLink"));
 			musicList.add(music);
 		}
-
+		mediaApp.setMusicList(musicList);
+		
 		// JSONArray jsonArray = new JSONArray(json);
 
 	}
@@ -263,6 +279,7 @@ public class MainActivity extends Activity implements OnClickListener {
 		public void onItemClick(AdapterView<?> parent, View view, int position,
 				long id) {
 			listPosition = position;
+			mediaApp.setListPosition(position);
 			playMusic();
 
 		}

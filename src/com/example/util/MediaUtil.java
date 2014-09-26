@@ -15,12 +15,43 @@ import com.example.entity.Music;
 public class MediaUtil {
 	
 	private List<Music> musicList;
-	
+	/**
+	 * 格式化时间，将秒转换为分:秒
+	 * @param currentTime
+	 * @return
+	 */
 	public static String formateTime(int currentTime) {
 		String minutes = currentTime / 60 + "";
 		String second = currentTime % 60 + "";
 		return minutes + ":" + second;
 	}
+	
+	/**
+	 * 格式化时间，将毫秒转换为分:秒格式
+	 * @param time
+	 * @return
+	 */
+	public static String formatTime(long time) {
+		String min = time / (1000 * 60) + "";
+		String sec = time % (1000 * 60) + "";
+		if (min.length() < 2) {
+			min = "0" + time / (1000 * 60) + "";
+		} else {
+			min = time / (1000 * 60) + "";
+		}
+		if (sec.length() == 4) {
+			sec = "0" + (time % (1000 * 60)) + "";
+		} else if (sec.length() == 3) {
+			sec = "00" + (time % (1000 * 60)) + "";
+		} else if (sec.length() == 2) {
+			sec = "000" + (time % (1000 * 60)) + "";
+		} else if (sec.length() == 1) {
+			sec = "0000" + (time % (1000 * 60)) + "";
+		}
+		return min + ":" + sec.trim().substring(0, 2);
+	}
+	
+	
 	public List<Music> getMusic(){
 		new Thread(new Runnable() {
 			
