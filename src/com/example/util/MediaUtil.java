@@ -20,7 +20,7 @@ public class MediaUtil {
 	 * @param currentTime
 	 * @return
 	 */
-	public static String formateTime(int currentTime) {
+	public static String formatSecond(int currentTime) {
 		String minutes = currentTime / 60 + "";
 		String second = currentTime % 60 + "";
 		return minutes + ":" + second;

@@ -140,7 +140,7 @@ public class PlayService extends Service {
 		msg = intent.getIntExtra("MSG", 0);
 		listPosition = mediaApp.getListPosition();
 		musicList = mediaApp.getMusicList();
-		path = intent.getStringExtra("songLink");
+		path =musicList.get(listPosition).getSongLink();
 
 		if (msg == Constant.PlayerMsg.PLAY_MSG) { // ÷±Ω”≤•∑≈“Ù¿÷
 			play(0);

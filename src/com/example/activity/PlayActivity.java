@@ -93,7 +93,7 @@ public class PlayActivity extends FragmentActivity {
 		if (isPlaying) {
 			play.setBackgroundResource(R.drawable.pause);
 		}
-
+		finalProgress.setText(MediaUtil.formatSecond(Integer.parseInt(music.getTime())));
 	}
 
 	private void findViewById() {
@@ -139,6 +139,7 @@ public class PlayActivity extends FragmentActivity {
 		mediaApp = (MediaApp) getApplication();
 		musicList = mediaApp.getMusicList();
 		music = musicList.get(listPosition);
+	
 
 	}
 
@@ -169,6 +170,13 @@ public class PlayActivity extends FragmentActivity {
 					startService(intent);
 					isPause = false;
 					isPlaying = true;
+				}else{
+					play.setBackgroundResource(R.drawable.pause_selector);
+					intent.setClass(PlayActivity.this, PlayService.class);
+					intent.putExtra("MSG", Constant.PlayerMsg.PLAY_MSG);
+					startService(intent);
+					isPause = false;
+					isPlaying = true;
 				}
 				break;
 			case R.id.previous: // 上一首歌曲
@@ -184,10 +192,10 @@ public class PlayActivity extends FragmentActivity {
 		 * 上一首
 		 */
 		public void previous_music() {
-			play.setBackgroundResource(R.drawable.play_selector);
 			listPosition = listPosition - 1;
 			mediaApp.setListPosition(listPosition);
 			if (listPosition >= 0) {
+				play.setBackgroundResource(R.drawable.play_selector);
 				music = musicList.get(listPosition); // 上一首MP3
 
 				Intent intent = new Intent(PlayActivity.this, PlayService.class);
@@ -208,10 +216,10 @@ public class PlayActivity extends FragmentActivity {
 		 * 下一首
 		 */
 		public void next_music() {
-			play.setBackgroundResource(R.drawable.play_selector);
 			listPosition = listPosition + 1;
 			mediaApp.setListPosition(listPosition);
 			if (listPosition <= musicList.size() - 1) {
+				play.setBackgroundResource(R.drawable.play_selector);
 				music = musicList.get(listPosition);
 				Intent intent = new Intent(PlayActivity.this, PlayService.class);
 				// intent.setAction("com.wwj.media.MUSIC_SERVICE");
